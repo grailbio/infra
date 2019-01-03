@@ -9,8 +9,13 @@ import (
 	"flag"
 	"testing"
 
+	"github.com/grailbio/base/log"
 	"github.com/grailbio/infra"
 )
+
+func init() {
+	log.AddFlags()
+}
 
 type testCreds string
 
@@ -77,8 +82,8 @@ func (c *testCluster) Version() int {
 }
 
 func init() {
-	infra.Register("testcreds", new(testCreds))
-	infra.Register("testcluster", new(testCluster))
+	infra.Register(new(testCreds))
+	infra.Register(new(testCluster))
 }
 
 var schema = infra.Schema{
@@ -88,8 +93,8 @@ var schema = infra.Schema{
 
 func TestConfig(t *testing.T) {
 	config, err := schema.Make(infra.Keys{
-		"creds":   "testcreds,user=testuser",
-		"cluster": "testcluster",
+		"creds":   "github.com/grailbio/infra_test.testCreds,user=testuser",
+		"cluster": "github.com/grailbio/infra_test.testCluster",
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -102,9 +107,9 @@ func TestConfig(t *testing.T) {
 }
 
 func TestConfigUnmarshal(t *testing.T) {
-	config, err := schema.Unmarshal([]byte(`creds: testcreds,user=unmarshaled
-cluster: testcluster
-testcluster:
+	config, err := schema.Unmarshal([]byte(`creds: github.com/grailbio/infra_test.testCreds,user=unmarshaled
+cluster: github.com/grailbio/infra_test.testCluster
+github.com/grailbio/infra_test.testCluster:
   instance_type: xyz
   num_instances: 123
 `))
@@ -124,7 +129,7 @@ func TestConfigInterface(t *testing.T) {
 	}
 	schema := infra.Schema{"creds": new(credentials)}
 	config, err := schema.Make(
-		infra.Keys{"creds": "testcreds,user=interface"},
+		infra.Keys{"creds": "github.com/grailbio/infra_test.testCreds,user=interface"},
 	)
 	if err != nil {
 		t.Fatal(err)
@@ -138,18 +143,18 @@ func TestConfigInterface(t *testing.T) {
 
 func TestSetup(t *testing.T) {
 	config, err := schema.Make(infra.Keys{
-		"creds":   "testcreds",
-		"cluster": "testcluster",
+		"creds":   "github.com/grailbio/infra_test.testCreds",
+		"cluster": "github.com/grailbio/infra_test.testCluster",
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := config.Setup(); err == nil || err.Error() != "setup testcluster: no user specified" {
+	if err := config.Setup(); err == nil || err.Error() != "setup github.com/grailbio/infra_test.testCluster: no user specified" {
 		t.Fatal(err)
 	}
 	config, err = schema.Make(infra.Keys{
-		"creds":   "testcreds,user=xyz",
-		"cluster": "testcluster",
+		"creds":   "github.com/grailbio/infra_test.testCreds,user=xyz",
+		"cluster": "github.com/grailbio/infra_test.testCluster",
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -162,15 +167,15 @@ func TestSetup(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got, want := string(p), `cluster: testcluster
-creds: testcreds,user=xyz
-testcluster:
+	if got, want := string(p), `cluster: github.com/grailbio/infra_test.testCluster
+creds: github.com/grailbio/infra_test.testCreds,user=xyz
+github.com/grailbio/infra_test.testCluster:
   instance_type: xxx
   num_instances: 123
   setup_user: xyz
-testcreds: xyz
+github.com/grailbio/infra_test.testCreds: xyz
 versions:
-  testcluster: 1
+  github.com/grailbio/infra_test.testCluster: 1
 `; got != want {
 		t.Errorf("got %v, want %v", got, want)
 	}
@@ -178,8 +183,8 @@ versions:
 
 func TestInstanceConfig(t *testing.T) {
 	config, err := schema.Make(infra.Keys{
-		"creds":   "testcreds,user=testuser",
-		"cluster": "testcluster",
+		"creds":   "github.com/grailbio/infra_test.testCreds,user=testuser",
+		"cluster": "github.com/grailbio/infra_test.testCluster",
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -190,16 +195,16 @@ func TestInstanceConfig(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got, want := string(p), `cluster: testcluster
-creds: testcreds,user=testuser
-instances:
-  testcluster:
-    instance_user: testuser
-testcluster:
+	if got, want := string(p), `cluster: github.com/grailbio/infra_test.testCluster
+creds: github.com/grailbio/infra_test.testCreds,user=testuser
+github.com/grailbio/infra_test.testCluster:
   instance_type: ""
   num_instances: 0
   setup_user: ""
-testcreds: testuser
+github.com/grailbio/infra_test.testCreds: testuser
+instances:
+  github.com/grailbio/infra_test.testCluster:
+    instance_user: testuser
 versions: {}
 `; got != want {
 		t.Errorf("got %v, want %v", got, want)

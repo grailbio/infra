@@ -240,7 +240,10 @@ func (c *Config) build() error {
 		}
 		if p == nil {
 			if impl != "" {
-				return fmt.Errorf("%s: no provider named %s", key, impl)
+				pkg := impl
+				pkg = strings.TrimRightFunc(pkg, func(r rune) bool { return r != '.' })
+				pkg = strings.TrimRight(pkg, ".")
+				return fmt.Errorf("%s: no provider named %s (is package %s linked into the binary?)", key, impl, pkg)
 			}
 			// Ignore missing providers. They only matter if they're
 			// going to be used when instantiating values later on.

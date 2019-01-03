@@ -10,6 +10,7 @@ import (
 	"reflect"
 	"sync"
 
+	"github.com/grailbio/base/log"
 	"github.com/grailbio/base/sync/once"
 )
 
@@ -28,9 +29,11 @@ var (
 	providers = map[string]*provider{}
 )
 
-// Register registers the named provider with the infra package.
-// Names must be unique, and can not be a reserved key ("versions",
-// "instances", "infra").
+// Register registers a provider with the infra package. Providers
+// are named by their fully-qualified package path, e.g.
+// "github.com/grailbio/infra/impl/https.Authority". Providers must
+// be a "defined" type -- i.e., they must be named (they cannot be
+// struct{}, int, string, etc.).
 //
 // Register uses only the type of the provided object (which should be
 // zero-valued): every config creates a new instance for exclusive use
@@ -69,11 +72,21 @@ var (
 //	// This is used to marshal and unmarshal the specific instance (as
 //	// initialized by Init) so that it may be restored later.
 //	InstanceConfig() interface{}
-func Register(name string, iface interface{}) {
+func Register(iface interface{}) {
+	typ := reflect.TypeOf(iface)
+	nameTyp := typ
+	for nameTyp.Kind() == reflect.Ptr {
+		nameTyp = nameTyp.Elem()
+	}
+	if nameTyp.Name() == "" {
+		log.Printf("package path: %s", nameTyp.PkgPath())
+		panic(fmt.Sprintf("infra.Register: cannot register provider of type %T: it is non-defined", iface))
+	}
+	name := nameTyp.PkgPath() + "." + nameTyp.Name()
 	if reservedKeys[name] {
 		panic("infra.Register: key " + name + " is reserved")
 	}
-	p := &provider{name: name, typ: reflect.TypeOf(iface)}
+	p := &provider{name: name, typ: typ}
 	if err := p.Typecheck(); err != nil {
 		panic("infra.Register: invalid type " + p.typ.String() + " for provider named " + name + ": " + err.Error())
 	}
@@ -82,6 +95,8 @@ func Register(name string, iface interface{}) {
 	if providers[name] != nil {
 		panic("infra.Register: provider named " + name + " is already registered")
 	}
+	log.Debug.Printf("infra.Register: registered provider named %s", name)
+
 	providers[name] = p
 }
 
