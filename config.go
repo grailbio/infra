@@ -63,8 +63,21 @@ type Schema map[string]interface{}
 // Make builds a new configuration based on the Schema s with the
 // provided configuration keys. Make ensures that the configuration
 // is well-formed: that there are no dependency cycles and that all
-// dependencies are satisfied. Make panics if the schema is not a
-// bijection.
+// needed dependencies are satisfied. Make panics if the schema is
+// not a bijection.
+//
+// Make performs all necessary type checking, ensuring that the
+// schema is valid and that the configured providers are
+// type-compatible with the keys laid out in the schema. Besides
+// exact matches, where the schema type matches the provider type
+// exactly, the following type conversions are allowable:
+//
+// - the provider type is assignable to the schema type (e.g., the
+//   schema type is an interface   that is implemented by the
+//   provider); or
+// - the provider type is a struct (or pointer to struct) that
+//   contains an embedded field   that is assignable to the schema
+//   type.
 func (s Schema) Make(keys Keys) (Config, error) {
 	if keys == nil {
 		keys = make(Keys)
@@ -114,7 +127,9 @@ func (s Schema) types() map[reflect.Type]string {
 
 // A Config manages a concrete configuration of infrastructure
 // providers. Configs are instantiated from a Schema, which also
-// performs validation.
+// performs validation. Configurations are responsible for mapping
+// and configuring concrete instances into the types specified by the
+// schema.
 type Config struct {
 	Keys
 	schema Schema
@@ -249,12 +264,33 @@ func (c *Config) build() error {
 			// going to be used when instantiating values later on.
 			continue
 		}
+		var field string
 		if !p.Type().AssignableTo(typ) {
-			return fmt.Errorf(
-				"provider %s implements type %s, which is incompatible to the bound type %s for key %s",
-				impl, p.Type(), typ, key)
+			// See if we can promote any anonymous fields.
+			ptyp := p.Type()
+			for ptyp.Kind() == reflect.Ptr {
+				ptyp = ptyp.Elem()
+			}
+			if ptyp.Kind() == reflect.Struct {
+				for i := 0; i < ptyp.NumField(); i++ {
+					f := ptyp.Field(i)
+					// Skip non-embedded fields and ones that are not exported.
+					if !f.Anonymous || f.PkgPath != "" {
+						continue
+					}
+					if f.Type.AssignableTo(typ) {
+						field = f.Name
+						break
+					}
+				}
+			}
+			if field == "" {
+				return fmt.Errorf(
+					"provider %s implements type %s, which is incompatible to the bound type %s for key %s",
+					impl, p.Type(), typ, key)
+			}
 		}
-		inst := p.New(*c)
+		inst := p.New(*c, field)
 		flags := inst.Flags()
 		for _, arg := range c.args(key) {
 			var (

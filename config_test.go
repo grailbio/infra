@@ -33,6 +33,17 @@ func (c *testCreds) Flags(flags *flag.FlagSet) {
 	flags.StringVar((*string)(c), "user", "", "the user name")
 }
 
+type User string
+
+type testUserEmbed struct {
+	User
+}
+
+func (t *testUserEmbed) Init() error {
+	t.User = "embedded"
+	return nil
+}
+
 type clusterInstance struct {
 	User string `yaml:"instance_user"`
 }
@@ -94,6 +105,7 @@ func (*testSetup) Version() int { return 1 }
 
 func init() {
 	infra.Register(new(testCreds))
+	infra.Register(new(testUserEmbed))
 	infra.Register(new(testCluster))
 	infra.Register(new(testSetup))
 }
@@ -150,6 +162,24 @@ func TestConfigInterface(t *testing.T) {
 	var creds credentials
 	config.Must(&creds)
 	if got, want := creds.User(), "interface"; got != want {
+		t.Errorf("got %v, want %v", got, want)
+	}
+}
+
+func TestConfigPromote(t *testing.T) {
+	type credentials interface {
+		User() string
+	}
+	schema := infra.Schema{"user": User("")}
+	config, err := schema.Make(
+		infra.Keys{"user": "github.com/grailbio/infra_test.testUserEmbed"},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var user User
+	config.Must(&user)
+	if got, want := string(user), "embedded"; got != want {
 		t.Errorf("got %v, want %v", got, want)
 	}
 }

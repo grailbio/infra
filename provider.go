@@ -153,8 +153,9 @@ func (p *provider) Type() reflect.Type {
 // An instance holds an instance of a provider, as managed by a
 // Config.
 type instance struct {
-	typ reflect.Type
-	val reflect.Value
+	typ   reflect.Type
+	val   reflect.Value
+	field string
 
 	config   Config
 	name     string
@@ -164,8 +165,8 @@ type instance struct {
 }
 
 // New returns a new instance for the given Config.
-func (p *provider) New(c Config) *instance {
-	inst := &instance{typ: p.typ, name: p.name, config: c}
+func (p *provider) New(c Config, field string) *instance {
+	inst := &instance{typ: p.typ, name: p.name, config: c, field: field}
 	if p.typ.Kind() == reflect.Ptr {
 		inst.val = reflect.New(p.typ.Elem())
 	} else {
@@ -181,6 +182,13 @@ func (inst *instance) Impl() string { return inst.name }
 // Value returns the value managed by this provider
 // instance.
 func (inst *instance) Value() reflect.Value {
+	if inst.field != "" {
+		val := inst.val
+		for val.Kind() == reflect.Ptr {
+			val = val.Elem()
+		}
+		return val.FieldByName(inst.field)
+	}
 	return inst.val
 }
 

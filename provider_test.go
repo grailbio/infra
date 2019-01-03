@@ -16,7 +16,7 @@ func TestProvider(t *testing.T) {
 	if err := p.Typecheck(); err != nil {
 		t.Fatal(err)
 	}
-	inst := p.New(Config{})
+	inst := p.New(Config{}, "")
 	if got, want := inst.val.Type(), typ; got != want {
 		t.Errorf("got %v, want %v", got, want)
 	}
@@ -29,7 +29,7 @@ func TestProvider(t *testing.T) {
 	if err := p.Typecheck(); err != nil {
 		t.Fatal(err)
 	}
-	inst = p.New(Config{})
+	inst = p.New(Config{}, "")
 	if inst.val.Pointer() == uintptr(0) {
 		t.Error("instantiated nil pointer")
 	}
