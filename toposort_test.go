@@ -12,15 +12,19 @@ func TestTopoSorter(t *testing.T) {
 		repository  = &instance{name: "repository"}
 		cluster     = &instance{name: "cluster"}
 		database    = &instance{name: "database"}
+		orphan      = &instance{name: "orphan"}
 	)
 	graph := make(topoSorter)
 	graph.Add(database, credentials)
 	graph.Add(database, repository)
 	graph.Add(cluster, credentials)
 	graph.Add(repository, credentials)
+	graph.Add(orphan, nil)
 
 	order := graph.Sort()
+	var seen []*instance
 	for from, tos := range graph {
+		seen = append(seen, from)
 		i := index(from, order)
 		for _, to := range tos {
 			j := index(to, order)
@@ -28,6 +32,15 @@ func TestTopoSorter(t *testing.T) {
 				t.Errorf("invalid order: %d <= %d (%v)", i, j, order)
 			}
 		}
+	}
+	if got, want := len(seen), len(graph); got != want {
+		t.Errorf("got %v, want %v", got, want)
+	}
+	for _, inst := range seen {
+		delete(graph, inst)
+	}
+	if len(graph) != 0 {
+		t.Error("order mismatch")
 	}
 }
 

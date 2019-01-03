@@ -294,6 +294,7 @@ func (c *Config) build() error {
 	c.Keys["instances"] = instanceConfigs
 
 	for _, src := range c.instances {
+		graph.Add(src, nil)
 		for _, typ := range src.RequiresInit() {
 			dst := c.instances[typ]
 			if dst == nil {

@@ -81,14 +81,27 @@ func (c *testCluster) Version() int {
 	return 1
 }
 
+type testSetup bool
+
+func (s *testSetup) Setup() error {
+	*s = true
+	return nil
+}
+
+func (s *testSetup) Config() interface{} { return s }
+
+func (*testSetup) Version() int { return 1 }
+
 func init() {
 	infra.Register(new(testCreds))
 	infra.Register(new(testCluster))
+	infra.Register(new(testSetup))
 }
 
 var schema = infra.Schema{
 	"creds":   new(testCreds),
 	"cluster": new(testCluster),
+	"setup":   new(testSetup),
 }
 
 func TestConfig(t *testing.T) {
@@ -145,6 +158,9 @@ func TestSetup(t *testing.T) {
 	config, err := schema.Make(infra.Keys{
 		"creds":   "github.com/grailbio/infra_test.testCreds",
 		"cluster": "github.com/grailbio/infra_test.testCluster",
+		// We include this to make sure that "orphan" providers
+		// are also accounted for.
+		"setup": "github.com/grailbio/infra_test.testSetup",
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -155,6 +171,7 @@ func TestSetup(t *testing.T) {
 	config, err = schema.Make(infra.Keys{
 		"creds":   "github.com/grailbio/infra_test.testCreds,user=xyz",
 		"cluster": "github.com/grailbio/infra_test.testCluster",
+		"setup":   "github.com/grailbio/infra_test.testSetup",
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -174,8 +191,11 @@ github.com/grailbio/infra_test.testCluster:
   num_instances: 123
   setup_user: xyz
 github.com/grailbio/infra_test.testCreds: xyz
+github.com/grailbio/infra_test.testSetup: true
+setup: github.com/grailbio/infra_test.testSetup
 versions:
   github.com/grailbio/infra_test.testCluster: 1
+  github.com/grailbio/infra_test.testSetup: 1
 `; got != want {
 		t.Errorf("got %v, want %v", got, want)
 	}

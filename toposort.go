@@ -16,9 +16,17 @@ const (
 // based on provider instances.
 type topoSorter map[*instance][]*instance
 
-// Add adds an edge to the graph s.
+// Add adds an edge to the graph s. If the destination edge is
+// nil, Add simply adds the node from to the graph.
 func (s topoSorter) Add(from, to *instance) {
-	s[from] = append(s[from], to)
+	if to != nil {
+		s[from] = append(s[from], to)
+		return
+	}
+	if _, ok := s[from]; ok {
+		return
+	}
+	s[from] = nil
 }
 
 // Sort returns a topological sort of the graph s.
@@ -33,6 +41,7 @@ func (s topoSorter) Sort() []*instance {
 	return order
 }
 
+// Cycle returns the first cycle, if any, in the graph.
 func (s topoSorter) Cycle() []*instance {
 	states := make(map[*instance]state)
 	for key := range s {
