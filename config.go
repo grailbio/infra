@@ -197,7 +197,13 @@ func (c Config) Instance(ptr interface{}) error {
 	if err := inst.Init(); err != nil {
 		return err
 	}
+	value = c.getValue(inst, vptr.Type().Elem())
+	vptr.Elem().Set(value)
+	return nil
+}
 
+func (c Config) getValue(inst *instance, typ reflect.Type) reflect.Value {
+	value := inst.Value()
 	ptyp := inst.val.Type()
 	pval := inst.val
 	for ptyp.Kind() == reflect.Ptr {
@@ -212,14 +218,13 @@ func (c Config) Instance(ptr interface{}) error {
 			if !f.Anonymous || f.PkgPath != "" {
 				continue
 			}
-			if f.Type.AssignableTo(vptr.Type().Elem()) {
+			if f.Type.AssignableTo(typ) {
 				value = pval.Field(i)
 				break
 			}
 		}
 	}
-	vptr.Elem().Set(value)
-	return nil
+	return value
 }
 
 // Must stores the configuration-managed instance into the provider
