@@ -9,6 +9,7 @@ import (
 	"bytes"
 	"crypto/rand"
 	"crypto/rsa"
+	cryptotls "crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
@@ -25,11 +26,15 @@ import (
 
 func init() { infra.Register(new(Authority)) }
 
-// TODO(marius): make this configurable.
-var caCertExpiry = time.Date(3000, time.January, 0, 0, 0, 0, 0, time.UTC)
+var (
+	certDuration = 27 * 7 * 24 * time.Hour
 
-// TODO(marius): make this configurable.
-const driftMargin = time.Minute
+	// TODO(marius): make this configurable.
+	caCertExpiry = time.Date(3000, time.January, 0, 0, 0, 0, 0, time.UTC)
+
+	// TODO(marius): make this configurable.
+	driftMargin = time.Minute
+)
 
 // Authority is an infrastructure provider that implements a TLS
 // authority, capable of issuing TLS certificates. Its implementation
@@ -203,6 +208,40 @@ func (ca *Authority) Issue(cn string, ttl time.Duration, ips []net.IP, dnss []st
 		return nil, nil, err
 	}
 	return cert, key, nil
+}
+
+// HTTPS returns a tls configs based on newly issued TLS certificates from this CA.
+func (ca *Authority) HTTPS() (client, server *cryptotls.Config, err error) {
+	cert, key, err := ca.Issue("infra", certDuration, nil, nil)
+	if err != nil {
+		return nil, nil, err
+	}
+	pool := x509.NewCertPool()
+	pool.AppendCertsFromPEM(ca.certPEM)
+
+	// Load the newly created certificate.
+	certPEM, err := encodePEM(&pem.Block{Type: "CERTIFICATE", Bytes: cert})
+	if err != nil {
+		return nil, nil, err
+	}
+	keyPEM, err := encodePEM(&pem.Block{Type: "RSA PRIVATE KEY", Bytes: x509.MarshalPKCS1PrivateKey(key)})
+	if err != nil {
+		return nil, nil, err
+	}
+	tlscert, err := cryptotls.X509KeyPair(certPEM, keyPEM)
+	if err != nil {
+		return nil, nil, err
+	}
+	clientConfig := &cryptotls.Config{
+		RootCAs:            pool,
+		InsecureSkipVerify: true,
+		Certificates:       []cryptotls.Certificate{tlscert},
+	}
+	serverConfig := &cryptotls.Config{
+		ClientCAs:    pool,
+		Certificates: []cryptotls.Certificate{tlscert},
+	}
+	return clientConfig, serverConfig, nil
 }
 
 func encodePEM(block *pem.Block) ([]byte, error) {
