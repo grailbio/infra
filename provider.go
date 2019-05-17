@@ -204,6 +204,10 @@ func (inst *instance) Init() error {
 		types := inst.RequiresInit()
 		args := make([]reflect.Value, len(types))
 		for i, typ := range types {
+			typ, err := assignUnique(typ, inst.config.typeset)
+			if err != nil {
+				panic(err)
+			}
 			arg := inst.config.instances[typ]
 			if err := arg.Init(); err != nil {
 				return err
@@ -231,6 +235,10 @@ func (inst *instance) Setup() error {
 		args  = make([]reflect.Value, len(types))
 	)
 	for i, typ := range types {
+		typ, err := assignUnique(typ, inst.config.typeset)
+		if err != nil {
+			panic(err)
+		}
 		arg := inst.config.instances[typ]
 		if err := arg.Init(); err != nil {
 			return err

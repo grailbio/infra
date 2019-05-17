@@ -89,6 +89,10 @@ func (s Schema) Make(keys Keys) (Config, error) {
 		versions:  make(map[string]int),
 		instances: make(map[reflect.Type]*instance),
 	}
+	config.typeset = make([]reflect.Type, 0, len(config.types))
+	for k := range config.types {
+		config.typeset = append(config.typeset, k)
+	}
 	if v := keys["versions"]; v != nil {
 		if err := remarshal(v, config.versions); err != nil {
 			return Config{}, err
@@ -137,6 +141,7 @@ type Config struct {
 	types     map[reflect.Type]string
 	instances map[reflect.Type]*instance
 	order     []*instance
+	typeset   []reflect.Type
 
 	versions map[string]int
 }
@@ -150,7 +155,11 @@ func (c Config) Instance(ptr interface{}) error {
 	if vptr.Kind() != reflect.Ptr {
 		panic("infra.Instance: non-pointer argument")
 	}
-	inst := c.instances[vptr.Type().Elem()]
+	typ, err := assignUnique(vptr.Type().Elem(), c.typeset)
+	if err != nil {
+		return err
+	}
+	inst := c.instances[typ]
 	if inst == nil {
 		return fmt.Errorf("no provider for type %s", vptr.Type().Elem())
 	}
@@ -236,6 +245,47 @@ func (c Config) args(key string) []string {
 	return strings.Split(args, ",")[1:]
 }
 
+func assignUnique(src reflect.Type, dsts []reflect.Type) (reflect.Type, error) {
+	var matches []reflect.Type
+	for _, dst := range dsts {
+		_, ok := assign(src, dst)
+		if ok {
+			matches = append(matches, dst)
+		}
+	}
+	switch {
+	case len(matches) == 0:
+		return nil, fmt.Errorf("no providers for type %v", src)
+	case len(matches) > 1:
+		return nil, fmt.Errorf("multiple providers for type %v: %v", src, matches)
+	}
+	return matches[0], nil
+}
+
+func assign(src, dst reflect.Type) (string, bool) {
+	if src.AssignableTo(dst) {
+		return "", true
+	}
+	// See if we can promote any anonymous fields.
+	ptyp := src
+	for ptyp.Kind() == reflect.Ptr {
+		ptyp = ptyp.Elem()
+	}
+	if ptyp.Kind() == reflect.Struct {
+		for i := 0; i < ptyp.NumField(); i++ {
+			f := ptyp.Field(i)
+			// Skip non-embedded fields and ones that are not exported.
+			if !f.Anonymous || f.PkgPath != "" {
+				continue
+			}
+			if f.Type.AssignableTo(dst) {
+				return f.Name, true
+			}
+		}
+	}
+	return "", false
+}
+
 func (c *Config) build() error {
 	graph := make(topoSorter)
 	// TODO(marius): we could separate out a schema check as a
@@ -264,31 +314,9 @@ func (c *Config) build() error {
 			// going to be used when instantiating values later on.
 			continue
 		}
-		var field string
-		if !p.Type().AssignableTo(typ) {
-			// See if we can promote any anonymous fields.
-			ptyp := p.Type()
-			for ptyp.Kind() == reflect.Ptr {
-				ptyp = ptyp.Elem()
-			}
-			if ptyp.Kind() == reflect.Struct {
-				for i := 0; i < ptyp.NumField(); i++ {
-					f := ptyp.Field(i)
-					// Skip non-embedded fields and ones that are not exported.
-					if !f.Anonymous || f.PkgPath != "" {
-						continue
-					}
-					if f.Type.AssignableTo(typ) {
-						field = f.Name
-						break
-					}
-				}
-			}
-			if field == "" {
-				return fmt.Errorf(
-					"provider %s implements type %s, which is incompatible to the bound type %s for key %s",
-					impl, p.Type(), typ, key)
-			}
+		field, ok := assign(p.Type(), typ)
+		if !ok {
+			return fmt.Errorf("provider implements type %s, which is incompatible to the bound type %s", p.Type(), typ)
 		}
 		inst := p.New(*c, field)
 		flags := inst.Flags()
@@ -332,17 +360,19 @@ func (c *Config) build() error {
 	for _, src := range c.instances {
 		graph.Add(src, nil)
 		for _, typ := range src.RequiresInit() {
-			dst := c.instances[typ]
-			if dst == nil {
-				return fmt.Errorf("no provider for type %s required to initialize provider %s", typ, src.Impl())
+			typ, err = assignUnique(typ, c.typeset)
+			if err != nil {
+				return err
 			}
+			dst := c.instances[typ]
 			graph.Add(src, dst)
 		}
 		for _, typ := range src.RequiresSetup() {
-			dst := c.instances[typ]
-			if dst == nil {
-				return fmt.Errorf("no provider for type %s required to setup provider %s", typ, src.Impl())
+			typ, err = assignUnique(typ, c.typeset)
+			if err != nil {
+				return err
 			}
+			dst := c.instances[typ]
 			graph.Add(src, dst)
 		}
 	}
