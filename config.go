@@ -25,7 +25,6 @@
 package infra
 
 import (
-	"errors"
 	"fmt"
 	"log"
 	"reflect"
@@ -33,10 +32,6 @@ import (
 
 	yaml "gopkg.in/yaml.v2"
 )
-
-// ErrWrongType is returned by the various Keys lookup methods
-// when the value for the requested key has incorrect type.
-var ErrWrongType = errors.New("key has wrong type")
 
 // A Schema defines a mapping between configuration keys and the
 // types of values provided by those configuration keys. For example,
@@ -79,9 +74,7 @@ type Schema map[string]interface{}
 //   contains an embedded field   that is assignable to the schema
 //   type.
 func (s Schema) Make(keys Keys) (Config, error) {
-	if keys == nil {
-		keys = make(Keys)
-	}
+	keys = keys.Clone()
 	config := Config{
 		Keys:      keys,
 		schema:    s,
@@ -122,7 +115,7 @@ func (s Schema) types() map[reflect.Type]string {
 			typ = typ.Elem()
 		}
 		if _, ok := types[typ]; ok {
-			panic("infra.Schema: bindings not bijective")
+			log.Panicf("bindings not bijective for type %v", typ)
 		}
 		types[typ] = k
 	}
@@ -163,11 +156,33 @@ func (c Config) Instance(ptr interface{}) error {
 	if inst == nil {
 		return fmt.Errorf("no provider for type %s", vptr.Type().Elem())
 	}
+	value := inst.Value()
 	// If we get an instance, it's guaranteed to have well-formed dependencies.
 	if err := inst.Init(); err != nil {
 		return err
 	}
-	vptr.Elem().Set(inst.Value())
+
+	ptyp := inst.val.Type()
+	pval := inst.val
+	for ptyp.Kind() == reflect.Ptr {
+		ptyp = ptyp.Elem()
+		pval = inst.val.Elem()
+		value = inst.val
+	}
+	if ptyp.Kind() == reflect.Struct {
+		for i := 0; i < ptyp.NumField(); i++ {
+			f := ptyp.Field(i)
+			// Skip non-embedded fields and ones that are not exported.
+			if !f.Anonymous || f.PkgPath != "" {
+				continue
+			}
+			if f.Type.AssignableTo(vptr.Type().Elem()) {
+				value = pval.Field(i)
+				break
+			}
+		}
+	}
+	vptr.Elem().Set(value)
 	return nil
 }
 
@@ -211,7 +226,7 @@ func (c Config) Marshal(instances bool) ([]byte, error) {
 func (c Config) Setup() error {
 	for _, inst := range c.order {
 		impl := inst.Impl()
-		if c.versions[impl] >= inst.Version() {
+		if version, ok := c.versions[impl]; ok && version >= inst.Version() {
 			continue
 		}
 		if err := inst.Setup(); err != nil {
@@ -364,7 +379,10 @@ func (c *Config) build() error {
 			if err != nil {
 				return err
 			}
-			dst := c.instances[typ]
+			dst, ok := c.instances[typ]
+			if !ok {
+				log.Fatalf("%v Init requires %v: unspecified", src.name, typ)
+			}
 			graph.Add(src, dst)
 		}
 		for _, typ := range src.RequiresSetup() {
@@ -372,7 +390,10 @@ func (c *Config) build() error {
 			if err != nil {
 				return err
 			}
-			dst := c.instances[typ]
+			dst, ok := c.instances[typ]
+			if !ok {
+				log.Fatalf("%v Setup requires %v: unspecified", src.name, typ.Name())
+			}
 			graph.Add(src, dst)
 		}
 	}
@@ -408,13 +429,13 @@ func (k Keys) Keys(key string) (Keys, bool, error) {
 	}
 	raw, ok := v.(map[interface{}]interface{})
 	if !ok {
-		return nil, false, ErrWrongType
+		return nil, false, fmt.Errorf("%v not proper key: %v", key, reflect.TypeOf(v))
 	}
 	keys := make(Keys)
 	for k, v := range raw {
 		kstr, ok := k.(string)
 		if !ok {
-			return nil, false, ErrWrongType
+			return nil, false, fmt.Errorf("%v not proper2 key", key)
 		}
 		keys[kstr] = v
 	}
@@ -429,7 +450,7 @@ func (k Keys) String(key string) (string, bool, error) {
 	}
 	s, ok := v.(string)
 	if !ok {
-		return "", false, ErrWrongType
+		return "", false, fmt.Errorf("%v not string key", key)
 	}
 	return s, true, nil
 }
@@ -442,7 +463,7 @@ func (k Keys) Int(key string) (int, bool, error) {
 	}
 	s, ok := v.(int)
 	if !ok {
-		return 0, false, ErrWrongType
+		return 0, false, fmt.Errorf("%v not int key", key)
 	}
 	return s, true, nil
 }

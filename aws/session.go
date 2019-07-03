@@ -7,6 +7,7 @@
 package aws
 
 import (
+	"flag"
 	"fmt"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -17,6 +18,8 @@ import (
 
 func init() {
 	infra.Register(new(Session))
+	infra.Register(new(AWSTool))
+	infra.Register(new(AWSCreds))
 }
 
 type instance struct {
@@ -95,4 +98,23 @@ func (s *Session) Init() error {
 // InstanceConfig implements infra.Provider.
 func (s *Session) InstanceConfig() interface{} {
 	return &s.instance
+}
+
+// AWSTool is the awstool docker image name provider.
+type AWSTool string
+
+// Flags implements infra.Provider.
+func (t *AWSTool) Flags(flags *flag.FlagSet) {
+	flags.StringVar((*string)(t), "awstool", "", "Aws tool")
+}
+
+// AWSCreds is the permanent AWS credentials provider.
+type AWSCreds struct {
+	*credentials.Credentials
+}
+
+// Init implements infra.Provider.
+func (a *AWSCreds) Init(sess *session.Session) error {
+	a.Credentials = sess.Config.Credentials
+	return nil
 }

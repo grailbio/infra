@@ -108,6 +108,8 @@ func init() {
 	infra.Register(new(testUserEmbed))
 	infra.Register(new(testCluster))
 	infra.Register(new(testSetup))
+	infra.Register(new(testEmbedStructCluster))
+	infra.Register(new(TestEmbeddedCluster))
 }
 
 var schema = infra.Schema{
@@ -225,6 +227,7 @@ github.com/grailbio/infra_test.testSetup: true
 setup: github.com/grailbio/infra_test.testSetup
 versions:
   github.com/grailbio/infra_test.testCluster: 1
+  github.com/grailbio/infra_test.testCreds: 0
   github.com/grailbio/infra_test.testSetup: 1
 `; got != want {
 		t.Errorf("got %v, want %v", got, want)
@@ -270,6 +273,58 @@ versions: {}
 		t.Errorf("got %v, want %v", got, want)
 	}
 	if got, want := cluster.FromInstance, true; got != want {
+		t.Errorf("got %v, want %v", got, want)
+	}
+}
+
+type Cluster interface {
+	Name() string
+}
+
+type TestEmbeddedCluster struct {
+	Cluster
+	name string
+}
+
+func (t *TestEmbeddedCluster) Name() string {
+	return t.name
+}
+
+type testEmbedStructCluster struct {
+	*TestEmbeddedCluster
+}
+
+func (t *testEmbedStructCluster) Init() error {
+	t.TestEmbeddedCluster = &TestEmbeddedCluster{name: "TestEmbeddedCluster"}
+	return nil
+}
+
+func TestProviderTypeCoercion(t *testing.T) {
+	var schema = infra.Schema{
+		"cluster": new(Cluster),
+	}
+	config, err := schema.Make(infra.Keys{
+		"cluster": "github.com/grailbio/infra_test.testEmbedStructCluster",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var cluster Cluster
+	config.Must(&cluster)
+
+	var eCluster *TestEmbeddedCluster
+	config.Must(&eCluster)
+
+	var sCluster *testEmbedStructCluster
+	config.Must(&sCluster)
+
+	if got, want := cluster.Name(), "TestEmbeddedCluster"; got != want {
+		t.Errorf("got %v, want %v", got, want)
+	}
+	if got, want := eCluster.Name(), "TestEmbeddedCluster"; got != want {
+		t.Errorf("got %v, want %v", got, want)
+	}
+	if got, want := sCluster.Name(), "TestEmbeddedCluster"; got != want {
 		t.Errorf("got %v, want %v", got, want)
 	}
 }

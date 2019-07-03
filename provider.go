@@ -79,7 +79,6 @@ func Register(iface interface{}) {
 		nameTyp = nameTyp.Elem()
 	}
 	if nameTyp.Name() == "" {
-		log.Printf("package path: %s", nameTyp.PkgPath())
 		panic(fmt.Sprintf("infra.Register: cannot register provider of type %T: it is non-defined", iface))
 	}
 	name := nameTyp.PkgPath() + "." + nameTyp.Name()
