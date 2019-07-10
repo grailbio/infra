@@ -24,7 +24,7 @@ import (
 	"github.com/grailbio/infra"
 )
 
-func init() { infra.Register(new(Authority)) }
+func init() { infra.Register("tls", new(Authority)) }
 
 var (
 	certDuration = 27 * 7 * 24 * time.Hour

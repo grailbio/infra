@@ -21,7 +21,7 @@ func TestSession(t *testing.T) {
 	skipIfNoCreds(t)
 
 	config, err := schema.Make(infra.Keys{
-		"session": "github.com/grailbio/infra/ec2metadata.Session",
+		"session": "ec2metadata",
 	})
 	if err != nil {
 		t.Fatal(err)

@@ -29,10 +29,9 @@ var (
 	providers = map[string]*provider{}
 )
 
-// Register registers a provider with the infra package. Providers
-// are named by their fully-qualified package path, e.g.
-// "github.com/grailbio/infra/impl/https.Authority". Providers must
-// be a "defined" type -- i.e., they must be named (they cannot be
+// Register registers a provider for the given key. Key name may only contain
+// characters a-z, 0-9, _ or -.
+// Providers must be a "defined" type -- i.e., they must be named (they cannot be
 // struct{}, int, string, etc.).
 //
 // Register uses only the type of the provided object (which should be
@@ -72,19 +71,17 @@ var (
 //	// This is used to marshal and unmarshal the specific instance (as
 //	// initialized by Init) so that it may be restored later.
 //	InstanceConfig() interface{}
-func Register(iface interface{}) {
-	typ := reflect.TypeOf(iface)
-	nameTyp := typ
-	for nameTyp.Kind() == reflect.Ptr {
-		nameTyp = nameTyp.Elem()
+func Register(name string, iface interface{}) {
+	for _, r := range name {
+		if '0' <= r && r <= '9' || 'a' <= r && r <= 'z' || r == '-' || r == '_' {
+			continue
+		}
+		log.Panicf("invalid name %s: identifiers may only contain 0-9, a-z, -, or _", name)
 	}
-	if nameTyp.Name() == "" {
-		panic(fmt.Sprintf("infra.Register: cannot register provider of type %T: it is non-defined", iface))
-	}
-	name := nameTyp.PkgPath() + "." + nameTyp.Name()
 	if reservedKeys[name] {
 		panic("infra.Register: key " + name + " is reserved")
 	}
+	typ := reflect.TypeOf(iface)
 	p := &provider{name: name, typ: typ}
 	if err := p.Typecheck(); err != nil {
 		panic("infra.Register: invalid type " + p.typ.String() + " for provider named " + name + ": " + err.Error())

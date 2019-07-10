@@ -478,6 +478,7 @@ func remarshal(src, dst interface{}) error {
 	if err != nil {
 		return err
 	}
+	err = yaml.Unmarshal(b, dst)
 	return yaml.Unmarshal(b, dst)
 }
 

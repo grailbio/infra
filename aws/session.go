@@ -17,9 +17,9 @@ import (
 )
 
 func init() {
-	infra.Register(new(Session))
-	infra.Register(new(AWSTool))
-	infra.Register(new(AWSCreds))
+	infra.Register("awssession", new(Session))
+	infra.Register("awstool", new(AWSTool))
+	infra.Register("awscreds", new(AWSCreds))
 }
 
 type instance struct {

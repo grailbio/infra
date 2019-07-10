@@ -9,7 +9,7 @@ import (
 	"github.com/grailbio/infra"
 )
 
-func init() { infra.Register(new(Session)) }
+func init() { infra.Register("ec2metadata", new(Session)) }
 
 type instance struct {
 	Region string            `yaml:"region"`

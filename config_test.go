@@ -104,12 +104,12 @@ func (s *testSetup) Config() interface{} { return s }
 func (*testSetup) Version() int { return 1 }
 
 func init() {
-	infra.Register(new(testCreds))
-	infra.Register(new(testUserEmbed))
-	infra.Register(new(testCluster))
-	infra.Register(new(testSetup))
-	infra.Register(new(testEmbedStructCluster))
-	infra.Register(new(TestEmbeddedCluster))
+	infra.Register("testcreds", new(testCreds))
+	infra.Register("testuserembed", new(testUserEmbed))
+	infra.Register("testcluster", new(testCluster))
+	infra.Register("testsetup", new(testSetup))
+	infra.Register("testembedstructcluster", new(testEmbedStructCluster))
+	infra.Register("testembeddedcluster", new(TestEmbeddedCluster))
 }
 
 var schema = infra.Schema{
@@ -120,8 +120,8 @@ var schema = infra.Schema{
 
 func TestConfig(t *testing.T) {
 	config, err := schema.Make(infra.Keys{
-		"creds":   "github.com/grailbio/infra_test.testCreds,user=testuser",
-		"cluster": "github.com/grailbio/infra_test.testCluster",
+		"creds":   "testcreds,user=testuser",
+		"cluster": "testcluster",
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -134,9 +134,9 @@ func TestConfig(t *testing.T) {
 }
 
 func TestConfigUnmarshal(t *testing.T) {
-	config, err := schema.Unmarshal([]byte(`creds: github.com/grailbio/infra_test.testCreds,user=unmarshaled
-cluster: github.com/grailbio/infra_test.testCluster
-github.com/grailbio/infra_test.testCluster:
+	config, err := schema.Unmarshal([]byte(`creds: testcreds,user=unmarshaled
+cluster: testcluster
+testcluster:
   instance_type: xyz
   num_instances: 123
 `))
@@ -156,7 +156,7 @@ func TestConfigInterface(t *testing.T) {
 	}
 	schema := infra.Schema{"creds": new(credentials)}
 	config, err := schema.Make(
-		infra.Keys{"creds": "github.com/grailbio/infra_test.testCreds,user=interface"},
+		infra.Keys{"creds": "testcreds,user=interface"},
 	)
 	if err != nil {
 		t.Fatal(err)
@@ -174,7 +174,7 @@ func TestConfigPromote(t *testing.T) {
 	}
 	schema := infra.Schema{"user": User("")}
 	config, err := schema.Make(
-		infra.Keys{"user": "github.com/grailbio/infra_test.testUserEmbed"},
+		infra.Keys{"user": "testuserembed"},
 	)
 	if err != nil {
 		t.Fatal(err)
@@ -188,22 +188,22 @@ func TestConfigPromote(t *testing.T) {
 
 func TestSetup(t *testing.T) {
 	config, err := schema.Make(infra.Keys{
-		"creds":   "github.com/grailbio/infra_test.testCreds",
-		"cluster": "github.com/grailbio/infra_test.testCluster",
+		"creds":   "testcreds",
+		"cluster": "testcluster",
 		// We include this to make sure that "orphan" providers
 		// are also accounted for.
-		"setup": "github.com/grailbio/infra_test.testSetup",
+		"setup": "testsetup",
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := config.Setup(); err == nil || err.Error() != "setup github.com/grailbio/infra_test.testCluster: no user specified" {
+	if err := config.Setup(); err == nil || err.Error() != "setup testcluster: no user specified" {
 		t.Fatal(err)
 	}
 	config, err = schema.Make(infra.Keys{
-		"creds":   "github.com/grailbio/infra_test.testCreds,user=xyz",
-		"cluster": "github.com/grailbio/infra_test.testCluster",
-		"setup":   "github.com/grailbio/infra_test.testSetup",
+		"creds":   "testcreds,user=xyz",
+		"cluster": "testcluster",
+		"setup":   "testsetup",
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -216,19 +216,19 @@ func TestSetup(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got, want := string(p), `cluster: github.com/grailbio/infra_test.testCluster
-creds: github.com/grailbio/infra_test.testCreds,user=xyz
-github.com/grailbio/infra_test.testCluster:
+	if got, want := string(p), `cluster: testcluster
+creds: testcreds,user=xyz
+setup: testsetup
+testcluster:
   instance_type: xxx
   num_instances: 123
   setup_user: xyz
-github.com/grailbio/infra_test.testCreds: xyz
-github.com/grailbio/infra_test.testSetup: true
-setup: github.com/grailbio/infra_test.testSetup
+testcreds: xyz
+testsetup: true
 versions:
-  github.com/grailbio/infra_test.testCluster: 1
-  github.com/grailbio/infra_test.testCreds: 0
-  github.com/grailbio/infra_test.testSetup: 1
+  testcluster: 1
+  testcreds: 0
+  testsetup: 1
 `; got != want {
 		t.Errorf("got %v, want %v", got, want)
 	}
@@ -236,8 +236,8 @@ versions:
 
 func TestInstanceConfig(t *testing.T) {
 	config, err := schema.Make(infra.Keys{
-		"creds":   "github.com/grailbio/infra_test.testCreds,user=testuser",
-		"cluster": "github.com/grailbio/infra_test.testCluster",
+		"creds":   "testcreds,user=testuser",
+		"cluster": "testcluster",
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -248,16 +248,16 @@ func TestInstanceConfig(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got, want := string(p), `cluster: github.com/grailbio/infra_test.testCluster
-creds: github.com/grailbio/infra_test.testCreds,user=testuser
-github.com/grailbio/infra_test.testCluster:
+	if got, want := string(p), `cluster: testcluster
+creds: testcreds,user=testuser
+instances:
+  testcluster:
+    instance_user: testuser
+testcluster:
   instance_type: ""
   num_instances: 0
   setup_user: ""
-github.com/grailbio/infra_test.testCreds: testuser
-instances:
-  github.com/grailbio/infra_test.testCluster:
-    instance_user: testuser
+testcreds: testuser
 versions: {}
 `; got != want {
 		t.Errorf("got %v, want %v", got, want)
@@ -304,7 +304,7 @@ func TestProviderTypeCoercion(t *testing.T) {
 		"cluster": new(Cluster),
 	}
 	config, err := schema.Make(infra.Keys{
-		"cluster": "github.com/grailbio/infra_test.testEmbedStructCluster",
+		"cluster": "testembedstructcluster",
 	})
 	if err != nil {
 		t.Fatal(err)

@@ -37,3 +37,31 @@ func TestProvider(t *testing.T) {
 		t.Errorf("got %v, want %v", got, want)
 	}
 }
+
+func TestProviderValidName(t *testing.T) {
+	defer func() {
+		if r := recover(); r != nil {
+			t.Errorf("Unexpected panic: %v", r)
+		}
+	}()
+	Register("test", new(Schema))
+	Register("ec2cluster", new(Schema))
+}
+
+func TestProviderInvalidNameSpecialCharacters(t *testing.T) {
+	defer func() {
+		if r := recover(); r == nil {
+			t.Errorf("Expected panic")
+		}
+	}()
+	Register("232*772", new(Schema))
+}
+
+func TestProviderInvalidNameCaps(t *testing.T) {
+	defer func() {
+		if r := recover(); r == nil {
+			t.Errorf("Expected panic")
+		}
+	}()
+	Register("CAPS", new(Schema))
+}

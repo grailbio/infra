@@ -27,7 +27,7 @@ func TestAuthority(t *testing.T) {
 	path := filepath.Join(dir, "authority")
 	schema := infra.Schema{"tls": new(issuer)}
 	config, err := schema.Make(infra.Keys{
-		"tls": "github.com/grailbio/infra/tls.Authority,file=" + path,
+		"tls": "tls,file=" + path,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -43,7 +43,7 @@ func TestAuthorityMarshal(t *testing.T) {
 	path := filepath.Join(dir, "authority")
 	schema := infra.Schema{"tls": new(issuer)}
 	config, err := schema.Make(infra.Keys{
-		"tls": "github.com/grailbio/infra/tls.Authority,file=" + path,
+		"tls": "tls,file=" + path,
 	})
 	if err != nil {
 		t.Fatal(err)
