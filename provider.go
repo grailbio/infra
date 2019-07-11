@@ -71,6 +71,9 @@ var (
 //	// This is used to marshal and unmarshal the specific instance (as
 //	// initialized by Init) so that it may be restored later.
 //	InstanceConfig() interface{}
+//
+//  // Help returns the help text for the provider.
+//  Help() string
 func Register(name string, iface interface{}) {
 	for _, r := range name {
 		if '0' <= r && r <= '9' || 'a' <= r && r <= 'z' || r == '-' || r == '_' {
@@ -300,6 +303,14 @@ func (inst *instance) Version() int {
 		return 0
 	}
 	return inst.val.MethodByName("Version").Call(nil)[0].Interface().(int)
+}
+
+// Help returns the provider help for this instance.
+func (inst *instance) Help() string {
+	if _, ok := inst.typ.MethodByName("Help"); !ok {
+		return ""
+	}
+	return inst.val.MethodByName("Help").Call(nil)[0].Interface().(string)
 }
 
 // RequiresInit returns the set of types required by this instance's

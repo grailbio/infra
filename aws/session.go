@@ -43,6 +43,11 @@ type Session struct {
 	instance instance
 }
 
+// Help implements infra.Provider
+func (Session) Help() string {
+	return "provide an AWS session"
+}
+
 // Init implements infra.Provider.
 func (s *Session) Init() error {
 	if s.instance != (instance{}) {
@@ -103,6 +108,11 @@ func (s *Session) InstanceConfig() interface{} {
 // AWSTool is the awstool docker image name provider.
 type AWSTool string
 
+// Help implements infra.Provider
+func (AWSTool) Help() string {
+	return "configure a specific AWS Tool"
+}
+
 // Flags implements infra.Provider.
 func (t *AWSTool) Flags(flags *flag.FlagSet) {
 	flags.StringVar((*string)(t), "awstool", "", "Aws tool")
@@ -111,6 +121,11 @@ func (t *AWSTool) Flags(flags *flag.FlagSet) {
 // AWSCreds is the permanent AWS credentials provider.
 type AWSCreds struct {
 	*credentials.Credentials
+}
+
+// Help implements infra.Provider
+func (AWSCreds) Help() string {
+	return "configure AWS credemntials"
 }
 
 // Init implements infra.Provider.

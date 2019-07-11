@@ -54,6 +54,11 @@ type Authority struct {
 	pemBlock *string
 }
 
+// Help implements infra.Provider
+func (Authority) Help() string {
+	return "configure a HTTPS CA from the provided PEM-encoded signing certificate"
+}
+
 // Flags implements infra.Provider.
 func (ca *Authority) Flags(flags *flag.FlagSet) {
 	flags.StringVar(&ca.path, "file", "", "path of file where the certificate authority is stored")

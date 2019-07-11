@@ -22,6 +22,11 @@ type Session struct {
 	instance instance
 }
 
+// Help implements infra.Provider
+func (Session) Help() string {
+	return "use EC2/IAM role credentials"
+}
+
 // Init implements infra.Provider
 func (e *Session) Init() error {
 	if e.instance != (instance{}) {

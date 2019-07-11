@@ -25,6 +25,7 @@
 package infra
 
 import (
+	"flag"
 	"fmt"
 	"log"
 	"reflect"
@@ -137,6 +138,41 @@ type Config struct {
 	typeset   []reflect.Type
 
 	versions map[string]int
+}
+
+// Usage contains the usage information of the provider
+type Usage struct {
+	// Name of the provider.
+	Name string
+	// Usage information of the provider.
+	Usage string
+	// Args to the provider.
+	Args []string
+}
+
+// Help returns Usages, organized by schema keys.
+func (c Config) Help() map[string][]Usage {
+	usage := make(map[string][]Usage)
+	for typ, key := range c.types {
+		for k, p := range providers {
+			field, ok := assign(p.Type(), typ)
+			if !ok {
+				continue
+			}
+			inst := p.New(c, field)
+			flags := inst.Flags()
+			u := Usage{Name: k, Usage: inst.Help()}
+			flags.VisitAll(func(f *flag.Flag) {
+				arg := f.Name
+				if f.DefValue != "" {
+					arg = arg + fmt.Sprintf("(default %q)", f.DefValue)
+				}
+				u.Args = append(u.Args, arg)
+			})
+			usage[key] = append(usage[key], u)
+		}
+	}
+	return usage
 }
 
 // Instance stores the configuration-managed instance into the
