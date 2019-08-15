@@ -79,7 +79,7 @@ func Register(name string, iface interface{}) {
 		if '0' <= r && r <= '9' || 'a' <= r && r <= 'z' || r == '-' || r == '_' {
 			continue
 		}
-		log.Panicf("invalid name %s: identifiers may only contain 0-9, a-z, -, or _", name)
+		log.Panicf("infra.Register: invalid name %s: identifiers may only contain 0-9, a-z, -, or _", name)
 	}
 	if reservedKeys[name] {
 		panic("infra.Register: key " + name + " is reserved")
