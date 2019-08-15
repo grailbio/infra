@@ -20,6 +20,8 @@ func init() {
 	infra.Register("awssession", new(Session))
 	infra.Register("awstool", new(AWSTool))
 	infra.Register("awscreds", new(AWSCreds))
+	infra.Register("awsregion", AWSRegion(""))
+	infra.Register("awsregionuswest2", new(AWSRegionUSWest2))
 }
 
 type instance struct {
@@ -131,5 +133,22 @@ func (AWSCreds) Help() string {
 // Init implements infra.Provider.
 func (a *AWSCreds) Init(sess *session.Session) error {
 	a.Credentials = sess.Config.Credentials
+	return nil
+}
+
+// AWSRegion is the AWS region setting.
+type AWSRegion string
+
+// Help implements infra.Provider
+func (AWSRegion) Help() string {
+	return "configure AWS Region"
+}
+
+type AWSRegionUSWest2 struct {
+	AWSRegion
+}
+
+func (a *AWSRegionUSWest2) Init() error {
+	a.AWSRegion = "us-west-2"
 	return nil
 }

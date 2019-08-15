@@ -15,6 +15,7 @@ import (
 
 var schema = infra.Schema{
 	"session": new(session.Session),
+	"region":  AWSRegion(""),
 }
 
 func TestSession(t *testing.T) {
@@ -22,6 +23,7 @@ func TestSession(t *testing.T) {
 
 	config, err := schema.Make(infra.Keys{
 		"session": "awssession",
+		"region":  "awsregionuswest2",
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -33,6 +35,12 @@ func TestSession(t *testing.T) {
 	}
 	var sess2 *Session
 	config.Must(&sess2)
+
+	var region AWSRegion
+	config.Must(&region)
+	if string(region) != "us-west-2" {
+		t.Error("awsregion is not us-west-2")
+	}
 
 	p, err := config.Marshal(true)
 	if err != nil {
