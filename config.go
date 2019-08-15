@@ -69,11 +69,11 @@ type Schema map[string]interface{}
 // exactly, the following type conversions are allowable:
 //
 // - the provider type is assignable to the schema type (e.g., the
-//   schema type is an interface   that is implemented by the
-//   provider); or
+// schema type is an interface   that is implemented by the
+// provider); or
 // - the provider type is a struct (or pointer to struct) that
-//   contains an embedded field   that is assignable to the schema
-//   type.
+// contains an embedded field   that is assignable to the schema
+// type.
 func (s Schema) Make(keys Keys) (Config, error) {
 	keys = keys.Clone()
 	config := Config{
