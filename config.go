@@ -140,6 +140,16 @@ type Config struct {
 	versions map[string]int
 }
 
+// Flag is a provider flag.
+type Flag struct {
+	// Name of the flag
+	Name string
+	// Default Value if non empty.
+	DefaultValue string
+	// Help is the help text for the flag.
+	Help string
+}
+
 // Usage contains the usage information of the provider
 type Usage struct {
 	// Name of the provider.
@@ -147,7 +157,7 @@ type Usage struct {
 	// Usage information of the provider.
 	Usage string
 	// Args to the provider.
-	Args []string
+	Args []Flag
 }
 
 // Help returns Usages, organized by schema keys.
@@ -163,10 +173,7 @@ func (c Config) Help() map[string][]Usage {
 			flags := inst.Flags()
 			u := Usage{Name: k, Usage: inst.Help()}
 			flags.VisitAll(func(f *flag.Flag) {
-				arg := f.Name
-				if f.DefValue != "" {
-					arg = arg + fmt.Sprintf("(default %q)", f.DefValue)
-				}
+				arg := Flag{f.Name, f.DefValue, f.Usage}
 				u.Args = append(u.Args, arg)
 			})
 			usage[key] = append(usage[key], u)
