@@ -36,6 +36,11 @@ var (
 	driftMargin = time.Minute
 )
 
+// Certs defines an interface used to obtain TLS client and server certificates.
+type Certs interface {
+	HTTPS() (client, server *cryptotls.Config, err error)
+}
+
 // Authority is an infrastructure provider that implements a TLS
 // authority, capable of issuing TLS certificates. Its implementation
 // requires that a file be specified (through the flag parameter
