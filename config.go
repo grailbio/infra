@@ -29,6 +29,7 @@ import (
 	"fmt"
 	"log"
 	"reflect"
+	"runtime"
 	"strings"
 
 	yaml "gopkg.in/yaml.v2"
@@ -197,7 +198,8 @@ func (c Config) Instance(ptr interface{}) error {
 	}
 	inst := c.instances[typ]
 	if inst == nil {
-		return fmt.Errorf("no provider for type %s", vptr.Type().Elem())
+		_, file, line, _ := runtime.Caller(1)
+		return fmt.Errorf("no provider for type %s (%s:%d)", vptr.Type().Elem(), file, line)
 	}
 	value := inst.Value()
 	// If we get an instance, it's guaranteed to have well-formed dependencies.
