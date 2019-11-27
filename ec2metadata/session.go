@@ -11,15 +11,9 @@ import (
 
 func init() { infra.Register("ec2metadata", new(Session)) }
 
-type instance struct {
-	Region string            `yaml:"region"`
-	Creds  credentials.Value `yaml:"credentials"`
-}
-
 // EC2Metadata is the infra provider for session.Session using AWS EC2 metadata
 type Session struct {
 	*session.Session
-	instance instance
 }
 
 // Help implements infra.Provider
@@ -29,14 +23,6 @@ func (Session) Help() string {
 
 // Init implements infra.Provider
 func (e *Session) Init() error {
-	if e.instance != (instance{}) {
-		var err error
-		e.Session, err = session.NewSession(&aws.Config{
-			Credentials: credentials.NewStaticCredentialsFromCreds(e.instance.Creds),
-			Region:      aws.String(e.instance.Region),
-		})
-		return err
-	}
 	var err error
 	sess, err := session.NewSession()
 	if err != nil {
@@ -57,16 +43,5 @@ func (e *Session) Init() error {
 	if err != nil {
 		return err
 	}
-	e.instance.Region = doc.Region
-	// Note that the underlying provider may not supply permanent
-	// credentials in this case, which could be problematic.
-	//
-	// TODO(marius): can we at least test for this and warn?
-	e.instance.Creds, err = e.Config.Credentials.Get()
 	return err
-}
-
-// InstanceConfig implements infra.Provider.
-func (e *Session) InstanceConfig() interface{} {
-	return &e.instance
 }
