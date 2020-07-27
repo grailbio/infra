@@ -199,7 +199,7 @@ func (c Config) Instance(ptr interface{}) error {
 	inst := c.instances[typ]
 	if inst == nil {
 		_, file, line, _ := runtime.Caller(1)
-		return fmt.Errorf("no provider for type %s (%s:%d)", vptr.Type().Elem(), file, line)
+		return fmt.Errorf("no providers for type %s (%s:%d)", vptr.Type().Elem(), file, line)
 	}
 	value := inst.Value()
 	// If we get an instance, it's guaranteed to have well-formed dependencies.
